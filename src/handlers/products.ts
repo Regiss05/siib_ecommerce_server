@@ -1,13 +1,12 @@
 import { Router } from "express";
 import multer from "multer";
-import path from "path";
 import { ObjectId } from "mongodb"; // ✅ Import ObjectId
 
 const router = Router();
 const upload = multer({ dest: "uploads/" });
 
 export default function mountProductEndpoints(router: Router) {
-  
+
   router.post("/add", upload.single("image"), async (req, res) => {
     const { name, description, category, price, availableStock, shopId } = req.body;
     const image = req.file;
@@ -34,7 +33,7 @@ export default function mountProductEndpoints(router: Router) {
         price: parseFloat(price),
         availableStock: parseInt(availableStock),
         imageUrl: `/uploads/${image.filename}`,
-        shopId: new ObjectId(shopId), 
+        shopId: new ObjectId(shopId),
         createdAt: new Date(),
       };
 
@@ -96,14 +95,14 @@ export default function mountProductEndpoints(router: Router) {
     const { id } = req.params;
     const app = req.app;
     const productCollection = app.locals.productCollection;
-  
+
     try {
       const product = await productCollection.findOne({ _id: new ObjectId(id) });
-  
+
       if (!product) {
         return res.status(404).json({ message: "Product not found" });
       }
-  
+
       const currentLikes = product.likes || 0; // Default to 0 if undefined
       const newLikes = currentLikes > 0 ? 0 : 1; // Toggle like/dislike
 
@@ -111,10 +110,10 @@ export default function mountProductEndpoints(router: Router) {
         { _id: new ObjectId(id) },
         { $set: { likes: newLikes } }
       );
-  
+
       // Respond with updated like status
       res.status(200).json({ message: newLikes === 1 ? "Liked" : "Disliked", likes: newLikes });
-  
+
     } catch (error) {
       console.error("Error toggling like:", error);
       res.status(500).json({ message: "Internal Server Error" });

@@ -4,3 +4,6 @@ build
 !/log/.gitkeep
 .env
 uploads/
+.idea
+yarn.lock
+package-lock.json

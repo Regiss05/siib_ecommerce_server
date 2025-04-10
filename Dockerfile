@@ -1,32 +1,34 @@
 FROM node:18
 
-# Create app directory
-WORKDIR /usr/src/app
+WORKDIR /app
 
-# Install app dependencies
-# A wildcard is used to ensure both package.json AND package-lock.json are copied
-# where available (npm@5+)
-COPY package.json ./
-COPY yarn.lock ./
+# Add node_modules/.bin to PATH
+ENV PATH=/app/node_modules/.bin:$PATH
 
-# When building for production, use the lockfile as-is:
+# Accept build-time args and convert to ENV
+ARG NODE_ENV
+ARG APP_ENV
+ARG PLATFORM_API_URL
+ARG MONGODB_DATABASE_NAME
+ARG MONGODB_USERNAME
+ARG MONGODB_PASSWORD
+
+ENV NODE_ENV=$NODE_ENV
+ENV APP_ENV=$APP_ENV
+ENV PLATFORM_API_URL=$PLATFORM_API_URL
+ENV MONGODB_DATABASE_NAME=$MONGODB_DATABASE_NAME
+ENV MONGODB_USERNAME=$MONGODB_USERNAME
+ENV MONGODB_PASSWORD=$MONGODB_PASSWORD
+
+COPY package.json yarn.lock ./
 RUN yarn install --frozen-lockfile
-# RUN npm ci --only=production
 
-# Bundle app source
-# TODO make this only copy the necessary files instead of copying the whole directory
-COPY ./src ./src
-COPY ./tsconfig.json ./tsconfig.json
+COPY . .
 
 RUN yarn build
 
-RUN yarn global add pm2
-COPY ./docker/processes.config.js ./processes.config.js
-
 RUN mkdir -p log && touch log/.keep
 
-EXPOSE 8080
-CMD [ "pm2-runtime", "./processes.config.js" ]
+EXPOSE 8000
 
-# CMD [ "pm2-runtime", "build/index.js" ]
-# CMD [ "node", "build/index.js" ]
+CMD ["npm", "start"]

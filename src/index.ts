@@ -26,7 +26,7 @@ import mountChatEndpoints from "./handlers/chat"; // Import chat endpoints
 import "./types/session";
 
 const dbName = env.mongo_db_name;
-const mongoUri = `mongodb+srv://${env.mongo_host}/${dbName}`;
+const mongoUri = `mongodb://${env.mongo_host}/${dbName}`;
 const mongoClientOptions = {
   authSource: "admin",
   auth: {
