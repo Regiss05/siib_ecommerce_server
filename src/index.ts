@@ -45,7 +45,7 @@ app.use(logger('dev'));
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: env.frontend_url,
+    origin: https://pi.siibarnut.com/,
     methods: ["GET", "POST"],
   },
 });
