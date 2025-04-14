@@ -76,6 +76,10 @@ app.use(cors({
   origin: ['https://pi.siibarnut.com'],
   credentials: true
 }));
+app.options('*', cors({
+  origin: ['https://pi.siibarnut.com'],
+  credentials: true
+}));
 
 // Handle cookies 🍪
 app.use(cookieParser());
