@@ -26,6 +26,7 @@ import mountChatEndpoints from "./handlers/chat"; // Import chat endpoints
 import "./types/session";
 
 const dbName = env.mongo_db_name;
+// const mongoUri = `mongodb+srv://${env.mongo_host}/${dbName}`;
 const mongoUri = `mongodb://${env.mongo_host}/${dbName}`;
 const mongoClientOptions = {
   authSource: "admin",
@@ -39,17 +40,15 @@ const mongoClientOptions = {
 //
 
 const app: express.Application = express();
-const allowedOrigin = "https://pi.siibarnut.com";
 
 // Log requests to the console in a compact format:
 app.use(logger('dev'));
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: allowedOrigin,
-    methods: ["GET", "POST", "OPTIONS"],
-    credentials: true
-  }
+    origin: env.frontend_url,
+    methods: ["GET", "POST"],
+  },
 });
 
 // Make io available to routes
@@ -74,19 +73,10 @@ app.use(express.json())
 
 // Handle CORS:
 app.use(cors({
-  origin: allowedOrigin,
-  credentials: true,
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"]
+  origin: ['https://pi.siibarnut.com'],
+  credentials: true
 }));
 
-// Preflight CORS
-app.options('*', cors({
-  origin: allowedOrigin,
-  credentials: true,
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"]
-}));
 // Handle cookies 🍪
 app.use(cookieParser());
 
