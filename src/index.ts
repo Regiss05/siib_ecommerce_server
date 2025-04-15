@@ -27,7 +27,7 @@ import "./types/session";
 
 const dbName = env.mongo_db_name;
 // const mongoUri = `mongodb+srv://${env.mongo_host}/${dbName}`;
-const mongoUri = `mongodb://${env.mongo_host}/${dbName}`;
+const mongoUri = `mongodb+srv://${env.mongo_host}/${dbName}`;
 const mongoClientOptions = {
   authSource: "admin",
   auth: {
@@ -73,11 +73,7 @@ app.use(express.json())
 
 // Handle CORS:
 app.use(cors({
-  origin: ['https://pi.siibarnut.com'],
-  credentials: true
-}));
-app.options('*', cors({
-  origin: ['https://pi.siibarnut.com'],
+  origin: env.frontend_url,
   credentials: true
 }));
 
