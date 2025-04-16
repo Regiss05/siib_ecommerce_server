@@ -47,7 +47,7 @@ export default function mountProductEndpoints(router: Router) {
   });
 
   router.get("/", async (req, res) => {
-    const { page = 1, limit = 10, shopId } = req.query;
+    const { page = 1, limit = 100, shopId } = req.query;
     const app = req.app;
     const productCollection = app.locals.productCollection;
 
@@ -91,33 +91,88 @@ export default function mountProductEndpoints(router: Router) {
     }
   });
 
+  // Like a product (toggle) - now user-specific
   router.post("/:id/like", async (req, res) => {
     const { id } = req.params;
     const app = req.app;
     const productCollection = app.locals.productCollection;
+    const currentUser = req.session.currentUser;
+
+    if (!currentUser) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const userId = currentUser.uid;
 
     try {
       const product = await productCollection.findOne({ _id: new ObjectId(id) });
-
       if (!product) {
         return res.status(404).json({ message: "Product not found" });
       }
 
-      const currentLikes = product.likes || 0; // Default to 0 if undefined
-      const newLikes = currentLikes > 0 ? 0 : 1; // Toggle like/dislike
+      const likedBy = product.likedBy || [];
+      const alreadyLiked = likedBy.includes(userId);
+
+      const updatedLikedBy = alreadyLiked
+        ? likedBy.filter((uid) => uid !== userId)
+        : [...likedBy, userId];
 
       await productCollection.updateOne(
         { _id: new ObjectId(id) },
-        { $set: { likes: newLikes } }
+        { $set: { likedBy: updatedLikedBy } }
       );
 
-      // Respond with updated like status
-      res.status(200).json({ message: newLikes === 1 ? "Liked" : "Disliked", likes: newLikes });
+      res.status(200).json({
+        message: alreadyLiked ? "Disliked" : "Liked",
+        likedBy: updatedLikedBy
+      });
 
     } catch (error) {
       console.error("Error toggling like:", error);
       res.status(500).json({ message: "Internal Server Error" });
     }
   });
+
+  // Get favorites for a user
+  router.get("/favorites/:userId", async (req, res) => {
+    const { userId } = req.params;
+    const app = req.app;
+    const productCollection = app.locals.productCollection;
+
+    try {
+      const likedProducts = await productCollection
+        .find({ likes: userId })
+        .toArray();
+
+      res.status(200).json({ products: likedProducts });
+    } catch (error) {
+      console.error("Error fetching favorites:", error);
+      res.status(500).json({ message: "Internal Server Error" });
+    }
+  });
+
+  router.get("/liked/by-user", async (req, res) => {
+    const app = req.app;
+    const productCollection = app.locals.productCollection;
+    const currentUser = req.session.currentUser;
+  
+    if (!currentUser) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+  
+    const userId = currentUser.uid;
+  
+    try {
+      const likedProducts = await productCollection
+        .find({ likedBy: userId })
+        .toArray();
+  
+      res.status(200).json({ products: likedProducts });
+    } catch (error) {
+      console.error("Error fetching liked products:", error);
+      res.status(500).json({ message: "Internal Server Error" });
+    }
+  });
+  
 }
 
