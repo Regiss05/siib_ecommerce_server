@@ -52,14 +52,50 @@ export default function mountProductEndpoints(router: Router) {
     const productCollection = app.locals.productCollection;
 
     try {
-      // @ts-ignore
-      const query = shopId ? { shopId: new ObjectId(shopId) } : {};
+      const query = shopId ? { shopId: new ObjectId(shopId as string) } : {};
 
       const products = await productCollection
-        .find(query)
+        .aggregate([
+          { $match: query },
+          {
+            $lookup: {
+              from: "shops",
+              localField: "shopId",
+              foreignField: "_id",
+              as: "shop"
+            }
+          },
+          { $unwind: "$shop" }, // Flatten the shop array
+          {
+            $project: {
+              name: 1,
+              description: 1,
+              category: 1,
+              price: 1,
+              availableStock: 1,
+              imageUrl: 1,
+              createdAt: 1,
+              likes: 1,
+              likedBy: 1,
+              shop: {
+                _id: "$shop._id",
+                shopName: "$shop.shopName",
+                fullName: "$shop.fullName",
+                email: "$shop.email",
+                phoneNumber: "$shop.phoneNumber",
+                country: "$shop.country",
+                city: "$shop.city",
+                shopLogo: "$shop.shopLogo",
+                documents: "$shop.documents",
+                createdAt: "$shop.createdAt",
+              }
+            },
+          },
+        ])
         .skip((Number(page) - 1) * Number(limit))
         .limit(Number(limit))
         .toArray();
+
 
       res.status(200).json({ products });
     } catch (error) {
@@ -155,24 +191,24 @@ export default function mountProductEndpoints(router: Router) {
     const app = req.app;
     const productCollection = app.locals.productCollection;
     const currentUser = req.session.currentUser;
-  
+
     if (!currentUser) {
       return res.status(401).json({ message: "Unauthorized" });
     }
-  
+
     const userId = currentUser.uid;
-  
+
     try {
       const likedProducts = await productCollection
         .find({ likedBy: userId })
         .toArray();
-  
+
       res.status(200).json({ products: likedProducts });
     } catch (error) {
       console.error("Error fetching liked products:", error);
       res.status(500).json({ message: "Internal Server Error" });
     }
   });
-  
+
 }
 
