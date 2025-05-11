@@ -47,62 +47,66 @@ export default function mountProductEndpoints(router: Router) {
   });
 
   router.get("/", async (req, res) => {
-    const { page = 1, limit = 100, shopId } = req.query;
+    const { page = 1, limit = 100, shopId, country } = req.query;
     const app = req.app;
     const productCollection = app.locals.productCollection;
-
+  
     try {
-      const query = shopId ? { shopId: new ObjectId(shopId as string) } : {};
-
-      const products = await productCollection
-        .aggregate([
-          { $match: query },
-          {
-            $lookup: {
-              from: "shops",
-              localField: "shopId",
-              foreignField: "_id",
-              as: "shop"
+      const matchStage: any = {};
+      if (shopId) {
+        matchStage.shopId = new ObjectId(shopId as string);
+      }
+  
+      const pipeline = [
+        {
+          $lookup: {
+            from: "shops",
+            localField: "shopId",
+            foreignField: "_id",
+            as: "shop"
+          }
+        },
+        { $unwind: "$shop" },
+        ...(country ? [{ $match: { "shop.country": country } }] : []), // ← filter by country
+        { $match: matchStage },
+        {
+          $project: {
+            name: 1,
+            description: 1,
+            category: 1,
+            price: 1,
+            availableStock: 1,
+            imageUrl: 1,
+            createdAt: 1,
+            likes: 1,
+            likedBy: 1,
+            shop: {
+              _id: "$shop._id",
+              shopName: "$shop.shopName",
+              fullName: "$shop.fullName",
+              email: "$shop.email",
+              phoneNumber: "$shop.phoneNumber",
+              country: "$shop.country",
+              city: "$shop.city",
+              shopLogo: "$shop.shopLogo",
+              documents: "$shop.documents",
+              createdAt: "$shop.createdAt",
             }
-          },
-          { $unwind: "$shop" }, // Flatten the shop array
-          {
-            $project: {
-              name: 1,
-              description: 1,
-              category: 1,
-              price: 1,
-              availableStock: 1,
-              imageUrl: 1,
-              createdAt: 1,
-              likes: 1,
-              likedBy: 1,
-              shop: {
-                _id: "$shop._id",
-                shopName: "$shop.shopName",
-                fullName: "$shop.fullName",
-                email: "$shop.email",
-                phoneNumber: "$shop.phoneNumber",
-                country: "$shop.country",
-                city: "$shop.city",
-                shopLogo: "$shop.shopLogo",
-                documents: "$shop.documents",
-                createdAt: "$shop.createdAt",
-              }
-            },
-          },
-        ])
-        .skip((Number(page) - 1) * Number(limit))
-        .limit(Number(limit))
-        .toArray();
-
-
+          }
+        },
+        { $sort: { createdAt: -1 } },
+        { $skip: (Number(page) - 1) * Number(limit) },
+        { $limit: Number(limit) }
+      ];
+  
+      const products = await productCollection.aggregate(pipeline).toArray();
+  
       res.status(200).json({ products });
     } catch (error) {
       console.error("Error fetching products:", error);
       res.status(500).json({ message: "Internal Server Error" });
     }
-  });
+  });  
 
   router.get("/:id", async (req, res) => {
     const { id } = req.params;
@@ -211,4 +215,3 @@ export default function mountProductEndpoints(router: Router) {
   });
 
 }
-
