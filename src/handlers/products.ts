@@ -108,6 +108,29 @@ export default function mountProductEndpoints(router: Router) {
     }
   });  
 
+  router.get("/search/suggestions", async (req, res) => {
+    const { query } = req.query;
+    const app = req.app;
+    const productCollection = app.locals.productCollection;
+  
+    if (!query || typeof query !== "string") {
+      return res.status(400).json({ message: "Query parameter is required" });
+    }
+  
+    try {
+      const suggestions = await productCollection
+        .find({ name: { $regex: query, $options: "i" } })
+        .project({ name: 1 }) // Only return the name field
+        .limit(10)
+        .toArray();
+  
+      res.status(200).json({ suggestions: suggestions.map(s => s.name) });
+    } catch (error) {
+      console.error("Error fetching suggestions:", error);
+      res.status(500).json({ message: "Internal Server Error" });
+    }
+  });  
+
   router.get("/:id", async (req, res) => {
     const { id } = req.params;
     const app = req.app;
