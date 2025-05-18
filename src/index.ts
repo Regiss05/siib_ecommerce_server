@@ -110,7 +110,7 @@ app.use('/user', userRouter);
 
 // Hello World page to check everything works:
 app.get('/', async (_, res) => {
-  res.status(200).send({ message: "Hello, World!" });
+  res.status(200).send({ message: "Backend is up!" });
 });
 
 const productRouter = express.Router();
