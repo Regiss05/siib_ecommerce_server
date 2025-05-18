@@ -50,13 +50,13 @@ export default function mountProductEndpoints(router: Router) {
     const { page = 1, limit = 100, shopId, country } = req.query;
     const app = req.app;
     const productCollection = app.locals.productCollection;
-  
+
     try {
       const matchStage: any = {};
       if (shopId) {
         matchStage.shopId = new ObjectId(shopId as string);
       }
-  
+
       const pipeline = [
         {
           $lookup: {
@@ -98,38 +98,38 @@ export default function mountProductEndpoints(router: Router) {
         { $skip: (Number(page) - 1) * Number(limit) },
         { $limit: Number(limit) }
       ];
-  
+
       const products = await productCollection.aggregate(pipeline).toArray();
-  
+
       res.status(200).json({ products });
     } catch (error) {
       console.error("Error fetching products:", error);
       res.status(500).json({ message: "Internal Server Error" });
     }
-  });  
+  });
 
   router.get("/search/suggestions", async (req, res) => {
     const { query } = req.query;
     const app = req.app;
     const productCollection = app.locals.productCollection;
-  
+
     if (!query || typeof query !== "string") {
       return res.status(400).json({ message: "Query parameter is required" });
     }
-  
+
     try {
       const suggestions = await productCollection
         .find({ name: { $regex: query, $options: "i" } })
         .project({ name: 1 }) // Only return the name field
         .limit(10)
         .toArray();
-  
+
       res.status(200).json({ suggestions: suggestions.map(s => s.name) });
     } catch (error) {
       console.error("Error fetching suggestions:", error);
       res.status(500).json({ message: "Internal Server Error" });
     }
-  });  
+  });
 
   router.get("/:id", async (req, res) => {
     const { id } = req.params;
@@ -147,7 +147,22 @@ export default function mountProductEndpoints(router: Router) {
       // Fetch shop details
       const shop = await shopCollection.findOne({ _id: product.shopId });
 
-      res.status(200).json({ product, shop });
+      if (shop) {
+        product.shop = {
+          _id: shop._id,
+          shopName: shop.shopName,
+          fullName: shop.fullName,
+          email: shop.email,
+          phoneNumber: shop.phoneNumber,
+          country: shop.country,
+          city: shop.city,
+          shopLogo: shop.shopLogo,
+          documents: shop.documents,
+          createdAt: shop.createdAt,
+        };
+      }
+
+      res.status(200).json({ product });
     } catch (error) {
       console.error("Error fetching product details:", error);
       res.status(500).json({ message: "Internal Server Error" });
