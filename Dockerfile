@@ -25,6 +25,8 @@ RUN yarn install --frozen-lockfile
 
 COPY . .
 
+RUN chown -R node:node /app/uploads
+
 RUN yarn build
 
 RUN mkdir -p log && touch log/.keep

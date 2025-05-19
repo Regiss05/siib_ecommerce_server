@@ -20,7 +20,6 @@ echo "🚀 Starting container $CONTAINER_NAME from image $IMAGE_NAME..."
 docker run --name $CONTAINER_NAME \
   --env-file .env \
   -p 8000:8000 \
-  -v file_uploads:/app/uploads \
   -d --network host $IMAGE_NAME
 
 echo "✅ Container $CONTAINER_NAME started successfully in detached mode."
