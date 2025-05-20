@@ -46,8 +46,9 @@ app.use(logger('dev'));
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: env.frontend_url,
+    origin: [env.frontend_url, 'http://localhost:3000'],
     methods: ["GET", "POST"],
+    credentials: true
   },
 });
 
@@ -73,7 +74,7 @@ app.use(express.json())
 
 // Handle CORS:
 app.use(cors({
-  origin: env.frontend_url,
+  origin: [env.frontend_url, 'http://localhost:3000'],
   credentials: true
 }));
 
