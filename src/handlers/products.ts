@@ -47,7 +47,7 @@ export default function mountProductEndpoints(router: Router) {
   });
 
   router.get("/", async (req, res) => {
-    const { page = 1, limit = 100, shopId, country } = req.query;
+    const { page = 1, limit = 1000, shopId, country } = req.query;
     const app = req.app;
     const productCollection = app.locals.productCollection;
 
