@@ -24,7 +24,7 @@ RUN yarn install --frozen-lockfile
 COPY . .
 
 # ✅ Fix bad uploads/log issue
-RUN rm -f /app/uploads /app/log && \
+RUN rm -rf /app/uploads /app/log && \
     mkdir -p /app/uploads /app/log && \
     touch /app/log/.keep && \
     chown -R node:node /app/uploads /app/log
