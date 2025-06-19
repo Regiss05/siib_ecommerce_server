@@ -141,7 +141,7 @@ app.use("/chat", chatRouter);
 
 // III. Boot up the app:
 
-server.listen(8000, async () => {
+server.listen(5000, async () => {
   try {
     const client = await MongoClient.connect(mongoUri, mongoClientOptions);
     const db = client.db(dbName);
