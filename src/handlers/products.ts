@@ -1,18 +1,18 @@
 import { Router } from "express";
 import multer from "multer";
-import { ObjectId } from "mongodb"; // ✅ Import ObjectId
+import { ObjectId } from "mongodb";
 
-const router = Router();
 const upload = multer({ dest: "uploads/" });
 
 export default function mountProductEndpoints(router: Router) {
 
-  router.post("/add", upload.single("image"), async (req, res) => {
+  router.post("/add", upload.single("image"), async (req, res): Promise<void> => {
     const { name, description, category, price, availableStock, shopId } = req.body;
     const image = req.file;
 
     if (!name || !description || !category || !price || !availableStock || !image || !shopId) {
-      return res.status(400).json({ message: "All fields are required, including shopId" });
+      res.status(400).json({ message: "All fields are required, including shopId" });
+      return;
     }
 
     const app = req.app;
@@ -21,9 +21,9 @@ export default function mountProductEndpoints(router: Router) {
 
     try {
       const shop = await shopCollection.findOne({ _id: new ObjectId(shopId) });
-
       if (!shop) {
-        return res.status(404).json({ message: "Shop not found" });
+        res.status(404).json({ message: "Shop not found" });
+        return;
       }
 
       const newProduct = {
@@ -46,7 +46,7 @@ export default function mountProductEndpoints(router: Router) {
     }
   });
 
-  router.get("/", async (req, res) => {
+  router.get("/", async (req, res): Promise<void> => {
     const { page = 1, limit = 1000, shopId, country } = req.query;
     const app = req.app;
     const productCollection = app.locals.productCollection;
@@ -67,7 +67,7 @@ export default function mountProductEndpoints(router: Router) {
           }
         },
         { $unwind: "$shop" },
-        ...(country ? [{ $match: { "shop.country": country } }] : []), // ← filter by country
+        ...(country ? [{ $match: { "shop.country": country } }] : []),
         { $match: matchStage },
         {
           $project: {
@@ -100,27 +100,28 @@ export default function mountProductEndpoints(router: Router) {
       ];
 
       const products = await productCollection.aggregate(pipeline).toArray();
-
       res.status(200).json({ products });
+
     } catch (error) {
       console.error("Error fetching products:", error);
       res.status(500).json({ message: "Internal Server Error" });
     }
   });
 
-  router.get("/search/suggestions", async (req, res) => {
+  router.get("/search/suggestions", async (req, res): Promise<void> => {
     const { query } = req.query;
     const app = req.app;
     const productCollection = app.locals.productCollection;
 
     if (!query || typeof query !== "string") {
-      return res.status(400).json({ message: "Query parameter is required" });
+      res.status(400).json({ message: "Query parameter is required" });
+      return;
     }
 
     try {
       const suggestions = await productCollection
         .find({ name: { $regex: query, $options: "i" } })
-        .project({ name: 1 }) // Only return the name field
+        .project({ name: 1 })
         .limit(10)
         .toArray();
 
@@ -131,7 +132,7 @@ export default function mountProductEndpoints(router: Router) {
     }
   });
 
-  router.get("/:id", async (req, res) => {
+  router.get("/:id", async (req, res): Promise<void> => {
     const { id } = req.params;
     const app = req.app;
     const productCollection = app.locals.productCollection;
@@ -139,14 +140,12 @@ export default function mountProductEndpoints(router: Router) {
 
     try {
       const product = await productCollection.findOne({ _id: new ObjectId(id) });
-
       if (!product) {
-        return res.status(404).json({ message: "Product not found" });
+        res.status(404).json({ message: "Product not found" });
+        return;
       }
 
-      // Fetch shop details
       const shop = await shopCollection.findOne({ _id: product.shopId });
-
       if (shop) {
         product.shop = {
           _id: shop._id,
@@ -169,15 +168,15 @@ export default function mountProductEndpoints(router: Router) {
     }
   });
 
-  // Like a product (toggle) - now user-specific
-  router.post("/:id/like", async (req, res) => {
+  router.post("/:id/like", async (req, res): Promise<void> => {
     const { id } = req.params;
     const app = req.app;
     const productCollection = app.locals.productCollection;
     const currentUser = req.session.currentUser;
 
     if (!currentUser) {
-      return res.status(401).json({ message: "Unauthorized" });
+      res.status(401).json({ message: "Unauthorized" });
+      return;
     }
 
     const userId = currentUser.uid;
@@ -185,14 +184,15 @@ export default function mountProductEndpoints(router: Router) {
     try {
       const product = await productCollection.findOne({ _id: new ObjectId(id) });
       if (!product) {
-        return res.status(404).json({ message: "Product not found" });
+        res.status(404).json({ message: "Product not found" });
+        return;
       }
 
       const likedBy = product.likedBy || [];
       const alreadyLiked = likedBy.includes(userId);
 
       const updatedLikedBy = alreadyLiked
-        ? likedBy.filter((uid) => uid !== userId)
+        ? likedBy.filter(uid => uid !== userId)
         : [...likedBy, userId];
 
       await productCollection.updateOne(
@@ -211,8 +211,7 @@ export default function mountProductEndpoints(router: Router) {
     }
   });
 
-  // Get favorites for a user
-  router.get("/favorites/:userId", async (req, res) => {
+  router.get("/favorites/:userId", async (req, res): Promise<void> => {
     const { userId } = req.params;
     const app = req.app;
     const productCollection = app.locals.productCollection;
@@ -229,13 +228,14 @@ export default function mountProductEndpoints(router: Router) {
     }
   });
 
-  router.get("/liked/by-user", async (req, res) => {
+  router.get("/liked/by-user", async (req, res): Promise<void> => {
     const app = req.app;
     const productCollection = app.locals.productCollection;
     const currentUser = req.session.currentUser;
 
     if (!currentUser) {
-      return res.status(401).json({ message: "Unauthorized" });
+      res.status(401).json({ message: "Unauthorized" });
+      return;
     }
 
     const userId = currentUser.uid;
