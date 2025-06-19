@@ -1,6 +1,7 @@
 {
   "name": "app-platform-demo-backend",
   "version": "1.0.0",
+  "type": "module",
   "license": "MIT",
   "description": "A demo app to showcase usage of the Pi App Platform.",
   "author": {
