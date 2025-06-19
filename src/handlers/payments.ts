@@ -1,11 +1,11 @@
 import axios from "axios";
-import { Router, RequestHandler } from "express";
+import { Router, Request, Response, NextFunction } from "express";
 import platformAPIClient from "../services/platformAPIClient";
 import "../types/session";
 
 export default function mountPaymentsEndpoints(router: Router) {
   // Handle the incomplete payment
-  const handleIncomplete: RequestHandler = async (req, res, next) => {
+  const handleIncomplete = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const payment = req.body.payment;
       const paymentId = payment.identifier;
@@ -37,7 +37,7 @@ export default function mountPaymentsEndpoints(router: Router) {
   };
 
   // Approve the current payment
-  const handleApprove: RequestHandler = async (req, res, next) => {
+  const handleApprove = async (req: Request, res: Response, next: NextFunction) => {
     try {
       if (!req.session.currentUser) {
         return res.status(401).json({ error: 'unauthorized', message: "User needs to sign in first" });
@@ -66,7 +66,7 @@ export default function mountPaymentsEndpoints(router: Router) {
   };
 
   // Complete the current payment
-  const handleComplete: RequestHandler = async (req, res, next) => {
+  const handleComplete = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const paymentId = req.body.paymentId;
       const txid = req.body.txid;
@@ -83,7 +83,7 @@ export default function mountPaymentsEndpoints(router: Router) {
   };
 
   // Handle the cancelled payment
-  const handleCancelled: RequestHandler = async (req, res, next) => {
+  const handleCancelled = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const paymentId = req.body.paymentId;
       const orderCollection = req.app.locals.orderCollection;
