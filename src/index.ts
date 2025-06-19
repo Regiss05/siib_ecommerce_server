@@ -26,7 +26,6 @@ import mountChatEndpoints from "./handlers/chat"; // Import chat endpoints
 import "./types/session";
 
 const dbName = env.mongo_db_name;
-// const mongoUri = `mongodb+srv://${env.mongo_host}/${dbName}`;
 const mongoUri = `mongodb+srv://${env.mongo_host}/${dbName}`;
 const mongoClientOptions = {
   authSource: "admin",
@@ -34,7 +33,8 @@ const mongoClientOptions = {
     username: env.mongo_user,
     password: env.mongo_password,
   },
-}
+};
+
 //
 // I. Initialize and set up the express app and various middlewares and packages:
 //
@@ -62,7 +62,6 @@ io.on("connection", (socket) => {
     console.log(`❌ User disconnected: ${socket.id}`);
   });
 });
-
 
 // Full log of all requests to /log/access.log:
 app.use(logger('common', {
@@ -93,7 +92,6 @@ app.use(session({
     collectionName: 'user_sessions'
   }),
 }));
-
 
 //
 // II. Mount app endpoints:
@@ -138,10 +136,13 @@ const chatRouter = express.Router();
 mountChatEndpoints(chatRouter);
 app.use("/chat", chatRouter);
 
-
+//
 // III. Boot up the app:
+//
 
-server.listen(5000, async () => {
+const PORT = 5000;
+
+server.listen(PORT, async () => {
   try {
     const client = await MongoClient.connect(mongoUri, mongoClientOptions);
     const db = client.db(dbName);
@@ -157,5 +158,5 @@ server.listen(5000, async () => {
     console.error("❌ Connection to MongoDB failed: ", err);
   }
 
-  console.log("✅ Backend listening on port 8000!");
+  console.log(`✅ Backend listening on port ${PORT}!`);
 });
