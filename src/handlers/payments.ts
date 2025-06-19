@@ -1,11 +1,11 @@
 import axios from "axios";
-import { Router } from "express";
+import { Router, RequestHandler } from "express";
 import platformAPIClient from "../services/platformAPIClient";
 import "../types/session";
 
 export default function mountPaymentsEndpoints(router: Router) {
-  // handle the incomplete payment
-  router.post('/incomplete', async (req, res, next) => {
+  // Handle the incomplete payment
+  const handleIncomplete: RequestHandler = async (req, res, next) => {
     try {
       const payment = req.body.payment;
       const paymentId = payment.identifier;
@@ -19,7 +19,7 @@ export default function mountPaymentsEndpoints(router: Router) {
         return res.status(400).json({ message: "Order not found" });
       }
 
-      const horizonResponse = await axios.create({ timeout: 20000 }).get(txURL);
+      const horizonResponse = await axios.get(txURL, { timeout: 20000 });
       const paymentIdOnBlock = horizonResponse.data.memo;
 
       if (paymentIdOnBlock !== order.pi_payment_id) {
@@ -34,19 +34,18 @@ export default function mountPaymentsEndpoints(router: Router) {
     } catch (err) {
       next(err);
     }
-  });
+  };
 
-  // approve the current payment
-  router.post('/approve', async (req, res, next) => {
+  // Approve the current payment
+  const handleApprove: RequestHandler = async (req, res, next) => {
     try {
       if (!req.session.currentUser) {
         return res.status(401).json({ error: 'unauthorized', message: "User needs to sign in first" });
       }
 
-      const app = req.app;
       const paymentId = req.body.paymentId;
       const currentPayment = await platformAPIClient.get(`/v2/payments/${paymentId}`);
-      const orderCollection = app.locals.orderCollection;
+      const orderCollection = req.app.locals.orderCollection;
 
       await orderCollection.insertOne({
         pi_payment_id: paymentId,
@@ -64,15 +63,14 @@ export default function mountPaymentsEndpoints(router: Router) {
     } catch (err) {
       next(err);
     }
-  });
+  };
 
-  // complete the current payment
-  router.post('/complete', async (req, res, next) => {
+  // Complete the current payment
+  const handleComplete: RequestHandler = async (req, res, next) => {
     try {
-      const app = req.app;
       const paymentId = req.body.paymentId;
       const txid = req.body.txid;
-      const orderCollection = app.locals.orderCollection;
+      const orderCollection = req.app.locals.orderCollection;
 
       await orderCollection.updateOne({ pi_payment_id: paymentId }, { $set: { txid, paid: true } });
 
@@ -82,14 +80,13 @@ export default function mountPaymentsEndpoints(router: Router) {
     } catch (err) {
       next(err);
     }
-  });
+  };
 
-  // handle the cancelled payment
-  router.post('/cancelled_payment', async (req, res, next) => {
+  // Handle the cancelled payment
+  const handleCancelled: RequestHandler = async (req, res, next) => {
     try {
-      const app = req.app;
       const paymentId = req.body.paymentId;
-      const orderCollection = app.locals.orderCollection;
+      const orderCollection = req.app.locals.orderCollection;
 
       await orderCollection.updateOne({ pi_payment_id: paymentId }, { $set: { cancelled: true } });
 
@@ -97,5 +94,10 @@ export default function mountPaymentsEndpoints(router: Router) {
     } catch (err) {
       next(err);
     }
-  });
+  };
+
+  router.post('/incomplete', handleIncomplete);
+  router.post('/approve', handleApprove);
+  router.post('/complete', handleComplete);
+  router.post('/cancelled_payment', handleCancelled);
 }
