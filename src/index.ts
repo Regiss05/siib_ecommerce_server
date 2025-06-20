@@ -12,6 +12,7 @@ import { MongoClient } from 'mongodb';
 import http from 'http';
 import { Server } from 'socket.io';
 import env from './environments';
+
 import mountPaymentsEndpoints from './handlers/payments';
 import mountUserEndpoints from './handlers/users';
 import mountProductEndpoints from './handlers/products';
@@ -21,6 +22,7 @@ import mountShopEndpoints from './handlers/shops';
 import mountChatEndpoints from './handlers/chat';
 import './types/session';
 
+// === MongoDB Config ===
 const dbName = env.mongo_db_name;
 const mongoUri = `mongodb+srv://${env.mongo_host}/${dbName}`;
 const mongoClientOptions = {
@@ -31,20 +33,23 @@ const mongoClientOptions = {
   },
 };
 
+// === Initialize Express App ===
 const app: express.Application = express();
 
-// 🔐 Trust Nginx proxy (for correct protocol detection)
+// === Trust Proxy (for HTTPS via Nginx) ===
 app.set('trust proxy', true);
 
-// 🔁 Optional: force HTTPS redirect (only if Nginx does not handle it)
-app.use((req, res, next) => {
-  if (!req.secure) {
-    return res.redirect('https://' + req.headers.host + req.url);
-  }
-  next();
-});
+// === Force HTTPS Redirect (Only in production) ===
+if (process.env.NODE_ENV === 'production') {
+  app.use((req, res, next) => {
+    if (!req.secure) {
+      return res.redirect('https://' + req.headers.host + req.url);
+    }
+    next();
+  });
+}
 
-// Logging
+// === Logging ===
 app.use(logger('dev'));
 app.use(
   logger('common', {
@@ -52,7 +57,7 @@ app.use(
   })
 );
 
-// Middleware
+// === Middleware ===
 app.use(express.json());
 app.use(cors({ origin: [env.frontend_url, 'http://localhost:3000'], credentials: true }));
 app.use(cookieParser());
@@ -70,7 +75,7 @@ app.use(
   })
 );
 
-// WebSocket setup
+// === HTTP Server & WebSocket ===
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
@@ -81,6 +86,7 @@ const io = new Server(server, {
 });
 
 app.locals.io = io;
+
 io.on('connection', (socket) => {
   console.log(`🔗 User connected: ${socket.id}, IP: ${socket.handshake.address}`);
   socket.on('disconnect', () => {
@@ -88,7 +94,11 @@ io.on('connection', (socket) => {
   });
 });
 
-// Routes
+// === Routes ===
+app.get('/', (_, res) => {
+  res.status(200).send({ message: 'Backend is up!' });
+});
+
 const paymentsRouter = express.Router();
 mountPaymentsEndpoints(paymentsRouter);
 app.use('/payments', paymentsRouter);
@@ -96,10 +106,6 @@ app.use('/payments', paymentsRouter);
 const userRouter = express.Router();
 mountUserEndpoints(userRouter);
 app.use('/user', userRouter);
-
-app.get('/', async (_, res) => {
-  res.status(200).send({ message: 'Backend is up!' });
-});
 
 const productRouter = express.Router();
 mountProductEndpoints(productRouter);
@@ -120,13 +126,14 @@ const chatRouter = express.Router();
 mountChatEndpoints(chatRouter);
 app.use('/chat', chatRouter);
 
-// Boot the server
+// === Server Start ===
 const PORT = 5000;
 
 server.listen(PORT, async () => {
   try {
     const client = await MongoClient.connect(mongoUri, mongoClientOptions);
     const db = client.db(dbName);
+
     app.locals.orderCollection = db.collection('orders');
     app.locals.userCollection = db.collection('users');
     app.locals.productCollection = db.collection('products');
@@ -135,10 +142,10 @@ server.listen(PORT, async () => {
     app.locals.chatGroupCollection = db.collection('chatGroups');
     app.locals.messageCollection = db.collection('messages');
 
-    console.log('✅ Connected to MongoDB at:', mongoUri);
+    console.log(`✅ Connected to MongoDB: ${mongoUri}`);
   } catch (err) {
     console.error('❌ MongoDB connection failed:', err);
   }
 
-  console.log(`✅ Backend listening on port ${PORT}`);
+  console.log(`🚀 Backend listening on http://localhost:${PORT}`);
 });
