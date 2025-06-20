@@ -59,7 +59,7 @@ app.use(
 
 // === Middleware ===
 app.use(express.json());
-app.use(cors({ origin: [env.frontend_url, 'http://localhost:3000'], credentials: true }));
+app.use(cors({ origin: [env.frontend_url, 'https://pi.siibarnut.com/'], credentials: true }));
 app.use(cookieParser());
 app.use(
   session({
