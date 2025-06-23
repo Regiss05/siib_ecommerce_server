@@ -2,14 +2,16 @@ import { Router } from "express";
 import multer from "multer";
 import path from "path";
 import { ObjectId } from "mongodb";
+import { v4 as uuidv4 } from "uuid";
 
-// Setup Multer to store files in the correct directory with unique filenames
+// Configure Multer for file uploads
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
     cb(null, "/home/administrator/siib/eserver-app/uploads");
   },
   filename: function (req, file, cb) {
-    const uniqueName = `${Date.now()}-${file.originalname}`;
+    const ext = path.extname(file.originalname);
+    const uniqueName = `${uuidv4()}${ext}`;
     cb(null, uniqueName);
   },
 });
@@ -17,7 +19,7 @@ const storage = multer.diskStorage({
 const upload = multer({ storage });
 
 export default function mountProductEndpoints(router: Router) {
-
+  // Create product with image upload
   router.post("/add", upload.single("image"), async (req, res): Promise<void> => {
     const { name, description, category, price, availableStock, shopId } = req.body;
     const image = req.file;
@@ -50,14 +52,15 @@ export default function mountProductEndpoints(router: Router) {
       };
 
       await productCollection.insertOne(newProduct);
-      res.status(201).json({ message: "Product added successfully", product: newProduct });
 
+      res.status(201).json({ message: "Product added successfully", product: newProduct });
     } catch (error) {
       console.error("Error adding product:", error);
       res.status(500).json({ message: "Internal Server Error" });
     }
   });
 
+  // Get all products with optional shop/country filtering
   router.get("/", async (req, res): Promise<void> => {
     const { page = 1, limit = 1000, shopId, country } = req.query;
     const app = req.app;
@@ -65,9 +68,7 @@ export default function mountProductEndpoints(router: Router) {
 
     try {
       const matchStage: any = {};
-      if (shopId) {
-        matchStage.shopId = new ObjectId(shopId as string);
-      }
+      if (shopId) matchStage.shopId = new ObjectId(shopId as string);
 
       const pipeline = [
         {
@@ -75,8 +76,8 @@ export default function mountProductEndpoints(router: Router) {
             from: "shops",
             localField: "shopId",
             foreignField: "_id",
-            as: "shop"
-          }
+            as: "shop",
+          },
         },
         { $unwind: "$shop" },
         ...(country ? [{ $match: { "shop.country": country } }] : []),
@@ -103,23 +104,23 @@ export default function mountProductEndpoints(router: Router) {
               shopLogo: "$shop.shopLogo",
               documents: "$shop.documents",
               createdAt: "$shop.createdAt",
-            }
-          }
+            },
+          },
         },
         { $sort: { createdAt: -1 } },
         { $skip: (Number(page) - 1) * Number(limit) },
-        { $limit: Number(limit) }
+        { $limit: Number(limit) },
       ];
 
       const products = await productCollection.aggregate(pipeline).toArray();
       res.status(200).json({ products });
-
     } catch (error) {
       console.error("Error fetching products:", error);
       res.status(500).json({ message: "Internal Server Error" });
     }
   });
 
+  // Get search suggestions
   router.get("/search/suggestions", async (req, res): Promise<void> => {
     const { query } = req.query;
     const app = req.app;
@@ -144,6 +145,7 @@ export default function mountProductEndpoints(router: Router) {
     }
   });
 
+  // Get product by ID
   router.get("/:id", async (req, res): Promise<void> => {
     const { id } = req.params;
     const app = req.app;
@@ -180,6 +182,7 @@ export default function mountProductEndpoints(router: Router) {
     }
   });
 
+  // Like or unlike product
   router.post("/:id/like", async (req, res): Promise<void> => {
     const { id } = req.params;
     const app = req.app;
@@ -214,32 +217,15 @@ export default function mountProductEndpoints(router: Router) {
 
       res.status(200).json({
         message: alreadyLiked ? "Disliked" : "Liked",
-        likedBy: updatedLikedBy
+        likedBy: updatedLikedBy,
       });
-
     } catch (error) {
       console.error("Error toggling like:", error);
       res.status(500).json({ message: "Internal Server Error" });
     }
   });
 
-  router.get("/favorites/:userId", async (req, res): Promise<void> => {
-    const { userId } = req.params;
-    const app = req.app;
-    const productCollection = app.locals.productCollection;
-
-    try {
-      const likedProducts = await productCollection
-        .find({ likes: userId })
-        .toArray();
-
-      res.status(200).json({ products: likedProducts });
-    } catch (error) {
-      console.error("Error fetching favorites:", error);
-      res.status(500).json({ message: "Internal Server Error" });
-    }
-  });
-
+  // Get products liked by user (session-based)
   router.get("/liked/by-user", async (req, res): Promise<void> => {
     const app = req.app;
     const productCollection = app.locals.productCollection;
@@ -250,11 +236,9 @@ export default function mountProductEndpoints(router: Router) {
       return;
     }
 
-    const userId = currentUser.uid;
-
     try {
       const likedProducts = await productCollection
-        .find({ likedBy: userId })
+        .find({ likedBy: currentUser.uid })
         .toArray();
 
       res.status(200).json({ products: likedProducts });
@@ -264,4 +248,21 @@ export default function mountProductEndpoints(router: Router) {
     }
   });
 
+  // Get products liked by userId (optional endpoint)
+  router.get("/favorites/:userId", async (req, res): Promise<void> => {
+    const { userId } = req.params;
+    const app = req.app;
+    const productCollection = app.locals.productCollection;
+
+    try {
+      const likedProducts = await productCollection
+        .find({ likedBy: userId })
+        .toArray();
+
+      res.status(200).json({ products: likedProducts });
+    } catch (error) {
+      console.error("Error fetching favorites:", error);
+      res.status(500).json({ message: "Internal Server Error" });
+    }
+  });
 }

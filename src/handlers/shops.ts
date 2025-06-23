@@ -2,14 +2,16 @@ import { Router, Request, Response } from "express";
 import multer from "multer";
 import path from "path";
 import { ObjectId } from "mongodb";
+import { v4 as uuidv4 } from "uuid";
 
-// Use custom storage to store files in your VPS uploads directory
+// Configure storage to save in VPS and use unique filenames
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
     cb(null, "/home/administrator/siib/eserver-app/uploads");
   },
   filename: function (req, file, cb) {
-    const uniqueName = `${Date.now()}-${file.originalname}`;
+    const ext = path.extname(file.originalname);
+    const uniqueName = `${uuidv4()}${ext}`;
     cb(null, uniqueName);
   },
 });
@@ -17,13 +19,14 @@ const storage = multer.diskStorage({
 const upload = multer({ storage });
 
 export default function mountShopEndpoints(router: Router) {
+  // Create a new shop with file uploads
   router.post(
     "/add",
     upload.fields([
-      { name: "shopLogo" },
-      { name: "document1" },
-      { name: "document2" },
-      { name: "document3" },
+      { name: "shopLogo", maxCount: 1 },
+      { name: "document1", maxCount: 1 },
+      { name: "document2", maxCount: 1 },
+      { name: "document3", maxCount: 1 },
     ]),
     async (req: Request, res: Response): Promise<void> => {
       const { fullName, email, country, shopName, city, phoneNumber } = req.body;
@@ -43,7 +46,9 @@ export default function mountShopEndpoints(router: Router) {
         shopName,
         city,
         phoneNumber,
-        shopLogo: files.shopLogo?.[0] ? `/uploads/${files.shopLogo[0].filename}` : null,
+        shopLogo: files.shopLogo?.[0]
+          ? `/uploads/${files.shopLogo[0].filename}`
+          : null,
         documents: [
           files.document1?.[0] && `/uploads/${files.document1[0].filename}`,
           files.document2?.[0] && `/uploads/${files.document2[0].filename}`,
@@ -52,11 +57,17 @@ export default function mountShopEndpoints(router: Router) {
         createdAt: new Date(),
       };
 
-      const result = await shopCollection.insertOne(newShop);
-      res.status(201).json({ message: "Shop created successfully", shop: newShop });
+      try {
+        const result = await shopCollection.insertOne(newShop);
+        res.status(201).json({ message: "Shop created successfully", shop: newShop });
+      } catch (error) {
+        console.error("Error creating shop:", error);
+        res.status(500).json({ message: "Internal Server Error" });
+      }
     }
   );
 
+  // Get all shops
   router.get("/", async (req: Request, res: Response): Promise<void> => {
     const shopCollection = req.app.locals.shopCollection;
 
@@ -69,6 +80,7 @@ export default function mountShopEndpoints(router: Router) {
     }
   });
 
+  // Get a single shop by ID
   router.get("/:id", async (req: Request, res: Response): Promise<void> => {
     const { id } = req.params;
     const shopCollection = req.app.locals.shopCollection;
@@ -86,6 +98,7 @@ export default function mountShopEndpoints(router: Router) {
     }
   });
 
+  // Update a shop by ID
   router.patch("/:id", async (req: Request, res: Response): Promise<void> => {
     const { id } = req.params;
     const updates = req.body;
@@ -109,6 +122,7 @@ export default function mountShopEndpoints(router: Router) {
     }
   });
 
+  // Delete a shop by ID
   router.delete("/:id", async (req: Request, res: Response): Promise<void> => {
     const { id } = req.params;
     const shopCollection = req.app.locals.shopCollection;

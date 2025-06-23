@@ -18,11 +18,17 @@ export interface ShopFiles {
 }
 
 export function isShopFiles(files: any): files is ShopFiles {
-  return (
-    typeof files === "object" &&
-    Array.isArray(files.shopLogo) &&
-    (Array.isArray(files.document1) ||
-      Array.isArray(files.document2) ||
-      Array.isArray(files.document3))
-  );
+  if (typeof files !== "object" || files === null) return false;
+
+  // Check shopLogo is either undefined or an array
+  const validShopLogo = files.shopLogo === undefined || Array.isArray(files.shopLogo);
+  // Check if any document field is either undefined or an array
+  const validDocuments =
+    files.document1 === undefined || Array.isArray(files.document1);
+  const validDocuments2 =
+    files.document2 === undefined || Array.isArray(files.document2);
+  const validDocuments3 =
+    files.document3 === undefined || Array.isArray(files.document3);
+
+  return validShopLogo && validDocuments && validDocuments2 && validDocuments3;
 }
