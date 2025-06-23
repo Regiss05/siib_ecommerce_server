@@ -2,10 +2,19 @@ import { Router } from "express";
 import multer from "multer";
 import { ObjectId } from "mongodb";
 
-const upload = multer({ dest: "uploads/" });
+// Updated multer to store uploads outside the project
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, "/home/administrator/siib/uploads");
+  },
+  filename: (req, file, cb) => {
+    cb(null, Date.now() + "-" + file.originalname);
+  },
+});
+
+const upload = multer({ storage });
 
 export default function mountProductEndpoints(router: Router) {
-
   router.post("/add", upload.single("image"), async (req, res): Promise<void> => {
     const { name, description, category, price, availableStock, shopId } = req.body;
     const image = req.file;
@@ -251,5 +260,4 @@ export default function mountProductEndpoints(router: Router) {
       res.status(500).json({ message: "Internal Server Error" });
     }
   });
-
 }

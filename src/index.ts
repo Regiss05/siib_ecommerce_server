@@ -109,7 +109,7 @@ app.use('/user', userRouter);
 
 const productRouter = express.Router();
 mountProductEndpoints(productRouter);
-app.use('/uploads', express.static('uploads'));
+app.use('/uploads', express.static('/home/administrator/siib/uploads'));
 app.use('/products', productRouter);
 
 app.use('/categories', categoryRoutes);

@@ -2,7 +2,17 @@ import { Router, Request, Response } from "express";
 import multer from "multer";
 import { ObjectId } from "mongodb";
 
-const upload = multer({ dest: "uploads/" });
+// Configure Multer to use external uploads folder
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, "/home/administrator/siib/uploads");
+  },
+  filename: (req, file, cb) => {
+    cb(null, Date.now() + "-" + file.originalname);
+  },
+});
+
+const upload = multer({ storage });
 
 export default function mountShopEndpoints(router: Router) {
   router.post(
@@ -24,6 +34,18 @@ export default function mountShopEndpoints(router: Router) {
 
       const shopCollection = req.app.locals.shopCollection;
 
+      const shopLogoPath = files.shopLogo?.[0]?.filename
+        ? `/uploads/${files.shopLogo[0].filename}`
+        : null;
+
+      const documentPaths = [
+        files.document1?.[0]?.filename,
+        files.document2?.[0]?.filename,
+        files.document3?.[0]?.filename,
+      ]
+        .filter(Boolean)
+        .map(filename => `/uploads/${filename}`);
+
       const newShop = {
         fullName,
         email,
@@ -31,12 +53,8 @@ export default function mountShopEndpoints(router: Router) {
         shopName,
         city,
         phoneNumber,
-        shopLogo: files.shopLogo?.[0]?.path || null,
-        documents: [
-          files.document1?.[0]?.path || null,
-          files.document2?.[0]?.path || null,
-          files.document3?.[0]?.path || null,
-        ].filter(Boolean),
+        shopLogo: shopLogoPath,
+        documents: documentPaths,
         createdAt: new Date(),
       };
 
