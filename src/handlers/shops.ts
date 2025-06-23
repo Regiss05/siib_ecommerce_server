@@ -1,20 +1,8 @@
 import { Router, Request, Response } from "express";
 import multer from "multer";
-import path from "path";
 import { ObjectId } from "mongodb";
 
-// Use custom storage to store files in your VPS uploads directory
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, "/home/administrator/siib/eserver-app/uploads");
-  },
-  filename: function (req, file, cb) {
-    const uniqueName = `${Date.now()}-${file.originalname}`;
-    cb(null, uniqueName);
-  },
-});
-
-const upload = multer({ storage });
+const upload = multer({ dest: "uploads/" });
 
 export default function mountShopEndpoints(router: Router) {
   router.post(
@@ -43,11 +31,11 @@ export default function mountShopEndpoints(router: Router) {
         shopName,
         city,
         phoneNumber,
-        shopLogo: files.shopLogo?.[0] ? `/uploads/${files.shopLogo[0].filename}` : null,
+        shopLogo: files.shopLogo?.[0]?.path || null,
         documents: [
-          files.document1?.[0] && `/uploads/${files.document1[0].filename}`,
-          files.document2?.[0] && `/uploads/${files.document2[0].filename}`,
-          files.document3?.[0] && `/uploads/${files.document3[0].filename}`,
+          files.document1?.[0]?.path || null,
+          files.document2?.[0]?.path || null,
+          files.document3?.[0]?.path || null,
         ].filter(Boolean),
         createdAt: new Date(),
       };

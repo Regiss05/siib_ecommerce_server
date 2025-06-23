@@ -10,19 +10,16 @@ export interface CreateShopRequest {
 }
 
 export interface ShopFiles {
-  shopLogo?: Express.Multer.File[];
-  document1?: Express.Multer.File[];
-  document2?: Express.Multer.File[];
-  document3?: Express.Multer.File[];
-  [key: string]: Express.Multer.File[] | undefined;
+  shopLogo: Express.Multer.File[];
+  [key: string]: Express.Multer.File[];
 }
 
 export function isShopFiles(files: any): files is ShopFiles {
   return (
-    typeof files === "object" &&
+    files &&
     Array.isArray(files.shopLogo) &&
-    (Array.isArray(files.document1) ||
-      Array.isArray(files.document2) ||
-      Array.isArray(files.document3))
+    Array.isArray(files.tinNumber) &&
+    Array.isArray(files.brelaBusinessRegistration) &&
+    Array.isArray(files.businessLicenseNumber)
   );
 }
