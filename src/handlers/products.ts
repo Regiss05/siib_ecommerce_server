@@ -141,6 +141,137 @@ export default function mountProductEndpoints(router: Router) {
     }
   });
 
+  // ✅ UPDATED GET SINGLE PRODUCT BY ID
+  router.get("/:id", async (req, res): Promise<void> => {
+    const { id } = req.params;
+    const app = req.app;
+    const productCollection = app.locals.productCollection;
+    const shopCollection = app.locals.shopCollection;
+    const countryCollection = app.locals.countryCollection;
+
+    try {
+      const product = await productCollection.findOne({ _id: new ObjectId(id) });
+      if (!product) {
+        res.status(404).json({ message: "Product not found" });
+        return;
+      }
+
+      const shop = await shopCollection.findOne({ _id: product.shopId });
+      let countryData = null;
+      if (shop?.country) {
+        countryData = await countryCollection.findOne({ _id: shop.country });
+      }
+
+      if (shop) {
+        product.shop = {
+          _id: shop._id,
+          shopName: shop.shopName,
+          fullName: shop.fullName,
+          email: shop.email,
+          phoneNumber: shop.phoneNumber,
+          city: shop.city,
+          shopLogo: shop.shopLogo,
+          documents: shop.documents,
+          createdAt: shop.createdAt,
+          country: countryData
+            ? { _id: countryData._id, name: countryData.name }
+            : null,
+        };
+      }
+
+      res.status(200).json({ product });
+    } catch (error) {
+      console.error("Error fetching product details:", error);
+      res.status(500).json({ message: "Internal Server Error" });
+    }
+  });
+
+  router.get("/", async (req, res): Promise<void> => {
+    const { page = 1, limit = 1000, shopId, country } = req.query;
+    const app = req.app;
+    const productCollection = app.locals.productCollection;
+
+    try {
+      const matchStage: any = {};
+      if (shopId) {
+        matchStage.shopId = new ObjectId(shopId as string);
+      }
+
+      const pipeline = [
+        {
+          $lookup: {
+            from: "shops",
+            localField: "shopId",
+            foreignField: "_id",
+            as: "shop"
+          }
+        },
+        { $unwind: "$shop" },
+        ...(country ? [{ $match: { "shop.country": country } }] : []),
+        { $match: matchStage },
+        {
+          $project: {
+            name: 1,
+            description: 1,
+            category: 1,
+            price: 1,
+            availableStock: 1,
+            imageUrl: 1,
+            createdAt: 1,
+            likes: 1,
+            likedBy: 1,
+            shop: {
+              _id: "$shop._id",
+              shopName: "$shop.shopName",
+              fullName: "$shop.fullName",
+              email: "$shop.email",
+              phoneNumber: "$shop.phoneNumber",
+              country: "$shop.country",
+              city: "$shop.city",
+              shopLogo: "$shop.shopLogo",
+              documents: "$shop.documents",
+              createdAt: "$shop.createdAt",
+            }
+          }
+        },
+        { $sort: { createdAt: -1 } },
+        { $skip: (Number(page) - 1) * Number(limit) },
+        { $limit: Number(limit) }
+      ];
+
+      const products = await productCollection.aggregate(pipeline).toArray();
+      res.status(200).json({ products });
+
+    } catch (error) {
+      console.error("Error fetching products:", error);
+      res.status(500).json({ message: "Internal Server Error" });
+    }
+  });
+
+  router.get("/search/suggestions", async (req, res): Promise<void> => {
+    const { query } = req.query;
+    const app = req.app;
+    const productCollection = app.locals.productCollection;
+
+    if (!query || typeof query !== "string") {
+      res.status(400).json({ message: "Query parameter is required" });
+      return;
+    }
+
+    try {
+      const suggestions = await productCollection
+        .find({ name: { $regex: query, $options: "i" } })
+        .project({ name: 1 })
+        .limit(10)
+        .toArray();
+
+      res.status(200).json({ suggestions: suggestions.map(s => s.name) });
+    } catch (error) {
+      console.error("Error fetching suggestions:", error);
+      res.status(500).json({ message: "Internal Server Error" });
+    }
+  });
+
   router.get("/:id", async (req, res): Promise<void> => {
     const { id } = req.params;
     const app = req.app;
