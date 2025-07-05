@@ -5,7 +5,7 @@ import { ObjectId } from "mongodb";
 // Updated multer to store uploads outside the project
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, "/home/administrator/siib/uploads");
+    cb(null, "./uploads");
   },
   filename: (req, file, cb) => {
     cb(null, Date.now() + "-" + file.originalname);

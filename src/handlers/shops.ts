@@ -5,7 +5,7 @@ import { ObjectId } from "mongodb";
 // Configure Multer to use external uploads folder
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, "/home/administrator/siib/uploads");
+    cb(null, "./uploads");
   },
   filename: (req, file, cb) => {
     cb(null, Date.now() + "-" + file.originalname);
